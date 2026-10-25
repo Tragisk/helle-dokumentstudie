@@ -167,6 +167,43 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
     setEditable(false); f.contentWindow!.focus(); f.contentWindow!.print(); setTimeout(() => setEditable(editing), 600);
   }
 
+  // ---------- PDF med udfyldelige felter (laves af PDF-motoren på GitHub) ----------
+  const [pdfStatus, setPdfStatus] = useState<string | null>(null);
+  async function lavPdf() {
+    if (!kilde?.version || pdfStatus) return;
+    const ver = kilde.version, type = kilde.type;
+    const filnavn = `LEA ${dok.navn.replace(" · ", " - ")} - ${partner ? partner.navn : "Skabelon"} v${ver}.pdf`.replace(/[\\/:*?"<>|]/g, "");
+    setPdfStatus("Starter PDF-motoren …");
+    try {
+      const { data: s } = await sb.auth.getSession();
+      const uid = s.session?.user.id; if (!uid) throw new Error("Du er ikke logget ind");
+      const { data: job, error } = await sb.from("ds_pdf_jobs")
+        .insert({ partner_id: partner?.id ?? null, dok_id: dokId, kilde: type, version: ver, status: "venter", bestilt_af: uid }).select("id").single();
+      if (error) throw error;
+      const r = await sb.functions.invoke("ds-pdf-start", { body: { job_id: job.id } });
+      if (r.error) {
+        const j = await (r.error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(j?.fejl || "Kunne ikke starte PDF-motoren");
+      }
+      setPdfStatus("Laver PDF … (typisk 1–2 min)");
+      const start = Date.now();
+      for (;;) {
+        await new Promise((res) => setTimeout(res, 5000));
+        const { data: j } = await sb.from("ds_pdf_jobs").select("status, sti, fejl").eq("id", job.id).single();
+        if (j?.status === "faerdig" && j.sti) {
+          const { data: u, error: ue } = await sb.storage.from("ds-pdf").createSignedUrl(j.sti, 300, { download: filnavn });
+          if (ue) throw ue;
+          const a = document.createElement("a"); a.href = u.signedUrl; a.click();
+          await log("PDF hentet", { partner_id: partner?.id ?? null, dok_id: dokId, detaljer: { version: ver, kilde: type } });
+          toast("PDF'en er hentet");
+          break;
+        }
+        if (j?.status === "fejl") throw new Error("PDF-motoren fejlede: " + (j.fejl ?? "ukendt fejl"));
+        if (Date.now() - start > 6 * 60_000) throw new Error("PDF-motoren svarer ikke. Prøv igen om lidt.");
+      }
+    } catch (e) { toast(fejltekst(e)); } finally { setPdfStatus(null); }
+  }
+
   if (!dok) return <div className="empty pad">Dokumentet findes ikke.</div>;
   if (!kilde) return <div className="empty pad">Der er ingen versioner af dette dokument endnu.</div>;
 
@@ -220,7 +257,9 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
           {erKladde && kanRette && <button className="btn danger" onClick={() => setModal("kasser")}>Kassér</button>}
           <button className={"btn" + (panel === "history" ? " on" : "")} onClick={() => setPanel(panel === "history" ? null : "history")}>Versioner</button>
           <button className={"btn" + (panel === "compare" ? " on" : "")} onClick={() => { setCmp(null); setPanel(panel === "compare" ? null : "compare"); }}>Sammenlign</button>
-          <button className="btn" onClick={() => udskriv()}>Udskriv / PDF</button>
+          <button className="btn" onClick={() => udskriv()}>Udskriv</button>
+          {!erKladde && !editing && <button className="btn" disabled={!!pdfStatus} onClick={lavPdf}
+            title="Vektor-PDF i LEA-designet. Felter i dokumentet kan udfyldes direkte i PDF'en.">{pdfStatus ?? "Hent PDF"}</button>}
         </div>
       </div>
       {notice ?? <div className="notice" />}

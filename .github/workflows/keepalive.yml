@@ -1,0 +1,25 @@
+# Holder Supabase-projektet i live (gratisplanen pauser projekter uden aktivitet)
+# og holder dette planlagte job aktivt på GitHub.
+name: Hold i live
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+permissions:
+  actions: write
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -fsS -X POST "https://pigrfvavanlpdetlbgfn.supabase.co/rest/v1/rpc/ds_ping" \
+            -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" -d '{}' -o /dev/null
+        env:
+          # Offentlig nøgle (den samme, som ligger i appen). Dokumentstudiets data kræver login.
+          ANON: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZ3JmdmF2YW5scGRldGxiZ2ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MzA3NjMsImV4cCI6MjEwODAwNjc2M30.1ZVkaQjKJ-hYRqA7qLs51y6vCX6ZYUqRyRkmHnOU4Og
+      - name: Hold det planlagte job aktivt
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

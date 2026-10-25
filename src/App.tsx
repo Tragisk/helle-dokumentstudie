@@ -8,9 +8,10 @@ import Login from "./components/Login";
 import DocView from "./components/DocView";
 import { TplOverview, PartnerOverview, NyPartner } from "./components/Overview";
 import { Brugere, Log, hentBackup } from "./components/Admin";
+import DataSide from "./components/Data";
 import { Chip, Modal, ToastProvider } from "./components/ui";
 
-export type Nav = { ws: string; view: "overview" | "doc" | "brugere" | "log"; dok?: string };
+export type Nav = { ws: string; view: "overview" | "doc" | "brugere" | "log" | "data"; dok?: string };
 
 function lesHash(): Nav {
   const [ws, view, dok] = window.location.hash.replace(/^#\/?/, "").split("/");
@@ -48,7 +49,7 @@ function Studio({ email }: { email: string }) {
   const ws = nav.ws === "tpl" || data.partnere.some((p) => p.id === nav.ws) ? nav.ws : "tpl";
   const partner = ws === "tpl" ? null : data.partnere.find((p) => p.id === ws)!;
   const docIds = ws === "tpl" ? data.dokTyper.map((d) => d.id) : data.dokTyper.filter((d) => pDok(data, ws, d.id)).map((d) => d.id);
-  const view = nav.view === "doc" && (!nav.dok || !docIds.includes(nav.dok)) ? "overview" : (nav.view === "brugere" || nav.view === "log") && !erAdmin && nav.view === "brugere" ? "overview" : nav.view;
+  const view = nav.view === "doc" && (!nav.dok || !docIds.includes(nav.dok)) ? "overview" : (nav.view === "brugere" || nav.view === "data") && !erAdmin ? "overview" : nav.view;
   let sidste: string | null = null; try { sidste = localStorage.getItem("ds-sidste-backup"); } catch { /* ok */ }
   const backupGammel = !sidste || Date.now() - new Date(sidste).getTime() > 30 * 864e5;
 
@@ -87,6 +88,7 @@ function Studio({ email }: { email: string }) {
           })}
           <div className="sep" />
           {erAdmin && <button className={"docitem" + (view === "brugere" ? " active" : "")} onClick={() => go({ ws, view: "brugere" })}><div className="n">Brugere og adgang</div></button>}
+          {erAdmin && <button className={"docitem" + (view === "data" ? " active" : "")} onClick={() => go({ ws, view: "data" })}><div className="n">Backup og import</div></button>}
           <button className={"docitem" + (view === "log" ? " active" : "")} onClick={() => go({ ws, view: "log" })}><div className="n">Log</div></button>
         </nav>
         <div className="sidefoot">
@@ -101,6 +103,7 @@ function Studio({ email }: { email: string }) {
             {view === "overview" && (partner ? <PartnerOverview key={ws} pid={ws} go={go} /> : <TplOverview go={go} onNyPartner={() => setNyPartner(true)} />)}
             {view === "brugere" && erAdmin && <Brugere />}
             {view === "log" && <Log />}
+            {view === "data" && erAdmin && <DataSide />}
           </div>}
       </div>
       {nyPartner && <NyPartner onClose={() => setNyPartner(false)} go={go} />}

@@ -179,3 +179,8 @@ table.dt td.actions{display:flex;gap:6px;flex-wrap:wrap}
 .card input:not([type=checkbox]):not([type=radio]),.card textarea{border:1px solid var(--line);border-radius:9px;padding:7px 9px;width:100%;background:#fff}
 .card input:disabled,.card textarea:disabled{background:#faf7fb;color:var(--muted)}
 .dlg input:not([type=checkbox]):not([type=radio]){border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%}
+
+/* import-oversigt */
+.implist{margin:8px 0 14px;padding-left:18px;max-height:46vh;overflow:auto;font-size:13px;line-height:1.55}
+.implist li{margin:3px 0}
+.card h3{margin:0 0 6px;font-size:15px}
