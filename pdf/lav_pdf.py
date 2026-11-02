@@ -91,7 +91,7 @@ def build_html(dok, partner, sider, version, felter=None) -> str:
 <footer class="foot"><span><b>LEA Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
 <span>{esc(dok['sidefod_titel'])} · {esc(dok['label'])} · v{esc(version)} · Side {i + 1} af {total}</span></footer></section>""" for i, pg in enumerate(sider))
     extra = (".partner img{height:8.5mm;max-width:34mm;object-fit:contain}"
-             ".field.udfyldt{background:transparent!important;border-color:transparent!important;border-bottom:1px solid #d9c6e3!important;border-radius:0!important;display:flex;align-items:center;padding:0 1mm;font-weight:600;font-size:9.5pt;height:auto;min-height:7mm;white-space:pre-wrap}"
+             ".field.udfyldt{background:transparent!important;border:0!important;border-radius:0!important;display:flex;align-items:center;padding:0 1mm;font-weight:600;font-size:9.5pt;height:auto;min-height:7mm;white-space:pre-wrap}"
              ".field.inl.udfyldt{display:inline-flex;width:auto;min-width:0;min-height:0;vertical-align:baseline;padding:0 .5mm}"
              ".field.multi.udfyldt{align-items:flex-start;padding-top:1mm}"
              ".cb.udfyldt{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:8pt;line-height:1}")
