@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sb, fejltekst } from "../lib/supabase";
-import { buildHtml, readPages, diffHtml, subst, fmtTid, esc } from "../lib/doc";
+import { buildHtml, readPages, diffHtml, subst, fmtTid, esc, feltListe } from "../lib/doc";
 import { useStore, kilder, aktivKilde, tplNyeste, tplKladde, varKladde, pDok, partnerAf } from "../lib/store";
-import { STATUS_TEKST, type Kilde, type Status } from "../lib/types";
+import { STATUS_TEKST, type Felter, type Kilde, type Partner, type Status } from "../lib/types";
 import { Modal, Confirm, Chip, useToast } from "./ui";
 
-type Panel = null | "history" | "compare";
+type Panel = null | "history" | "compare" | "felter";
 type Gem = "gemt" | "gemmer" | "fejl" | null;
 
 export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
@@ -43,8 +43,10 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
   const erKladde = !!kilde && kilde.version === null;
 
   // HTML'en fryses under redigering, så markøren ikke hopper
-  const htmlKey = editing ? `edit:${kilde?.rec.id}` : `${kilde?.key}:${kilde?.rec.id}:${kilde?.rec.opdateret}:${partner?.navn}:${partner?.logo?.length}`;
-  const html = useMemo(() => kilde ? buildHtml({ dok, partner, sider: kilde.sider, versionTekst: visTekst, visVersion: true }) : "",
+  const felter: Felter = (pd?.felter as Felter) ?? {};
+  const felterKey = JSON.stringify(felter);
+  const htmlKey = editing ? `edit:${kilde?.rec.id}` : `${kilde?.key}:${kilde?.rec.id}:${kilde?.rec.opdateret}:${partner?.navn}:${partner?.logo?.length}:${felterKey}`;
+  const html = useMemo(() => kilde ? buildHtml({ dok, partner, sider: kilde.sider, versionTekst: visTekst, visVersion: true, felter: editing ? undefined : felter }) : "",
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [htmlKey, dok?.css, dok?.label, dok?.sidefod_titel]);
 
@@ -167,6 +169,22 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
     setEditable(false); f.contentWindow!.focus(); f.contentWindow!.print(); setTimeout(() => setEditable(editing), 600);
   }
 
+  // ---------- udfyldning af felter (gemmes pr. partner og dokument) ----------
+  const felterTimer = useRef<number>();
+  function saetFelt(navn: string, v: string | boolean) {
+    if (!pd) return;
+    const ny: Felter = { ...felter, [navn]: v };
+    if (v === "" || v === false) delete ny[navn];
+    patch((d) => ({ ...d, partnerDoks: d.partnerDoks.map((x) => x.partner_id === ws && x.dok_id === dokId ? { ...x, felter: ny } : x) }));
+    setGem("gemmer");
+    window.clearTimeout(felterTimer.current);
+    felterTimer.current = window.setTimeout(async () => {
+      const { error } = await sb.from("ds_partner_dokumenter").update({ felter: ny }).eq("partner_id", ws).eq("dok_id", dokId);
+      setGem(error ? "fejl" : "gemt");
+      if (error) toast(fejltekst(error));
+    }, 700);
+  }
+
   // ---------- PDF med udfyldelige felter (laves af PDF-motoren på GitHub) ----------
   const [pdfStatus, setPdfStatus] = useState<string | null>(null);
   async function lavPdf() {
@@ -255,11 +273,12 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
           {editing && <button className="btn" onClick={indsaetNavn} title="Indsæt partnernavnet, hvor markøren står">＋ Partnernavn</button>}
           {erKladde && (isTpl ? erAdmin : kanRette) && <button className="btn primary" onClick={async () => { await gemNu(); setModal("publicer"); }}>Publicér</button>}
           {erKladde && kanRette && <button className="btn danger" onClick={() => setModal("kasser")}>Kassér</button>}
+          {!editing && <button className={"btn" + (panel === "felter" ? " on" : "")} onClick={() => setPanel(panel === "felter" ? null : "felter")}>Udfyld felter</button>}
           <button className={"btn" + (panel === "history" ? " on" : "")} onClick={() => setPanel(panel === "history" ? null : "history")}>Versioner</button>
           <button className={"btn" + (panel === "compare" ? " on" : "")} onClick={() => { setCmp(null); setPanel(panel === "compare" ? null : "compare"); }}>Sammenlign</button>
           <button className="btn" onClick={() => udskriv()}>Udskriv</button>
           {!erKladde && !editing && <button className="btn" disabled={!!pdfStatus} onClick={lavPdf}
-            title="Vektor-PDF i LEA-designet. Felter i dokumentet kan udfyldes direkte i PDF'en.">{pdfStatus ?? "Hent PDF"}</button>}
+            title="Vektor-PDF i LEA-designet med de felter, du har udfyldt. Tomme felter kan udfyldes i PDF'en.">{pdfStatus ?? "Hent PDF"}</button>}
         </div>
       </div>
       {notice ?? <div className="notice" />}
@@ -270,6 +289,8 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
         <div className={"panel" + (panel ? " open" : "")}>
           {panel === "history" && <Historik alle={alle} aktivKey={aktiv?.key} nyesteVersion={nyeste?.version ?? null} viewKey={kilde.key} isTpl={isTpl} erAdmin={erAdmin}
             onVis={setViewKey} onCmp={(a, b) => { setCmp({ a, b }); setPanel("compare"); }} onSlet={(k) => setModal({ slet: k })} onClose={() => setPanel(null)} />}
+          {panel === "felter" && <FelterPanel sider={kilde.sider} felter={felter} partner={partner} kanRette={kanRette && !!pd}
+            onChange={saetFelt} onClose={() => setPanel(null)} />}
           {panel === "compare" && <Sammenlign alle={alle} navn={partner ? partner.navn : "[Partnernavn]"}
             a={cmp?.a ?? (alle[1]?.key ?? alle[0].key)} b={cmp?.b ?? kilde.key} onChange={setCmp} onClose={() => setPanel(null)} />}
         </div>
@@ -375,5 +396,40 @@ function PublicerDialog({ isTpl, dokNavn, partnerNavn, seneste, foelgere, andre,
         <button className="btn primary" disabled={busy || !note.trim()} onClick={async () => { setBusy(true); try { await onOk(stor, note.trim()); } finally { setBusy(false); } }}>Publicér v{naeste(stor)}</button>
       </div>
     </Modal>
+  );
+}
+
+function FelterPanel({ sider, felter, partner, kanRette, onChange, onClose }: {
+  sider: string[]; felter: Felter; partner: Partner | null; kanRette: boolean;
+  onChange: (navn: string, v: string | boolean) => void; onClose: () => void;
+}) {
+  const liste = useMemo(() => feltListe(sider), [sider]);
+  const grupper: [string, typeof liste][] = [];
+  liste.forEach((f) => { const g = grupper.find((x) => x[0] === f.gruppe); if (g) g[1].push(f); else grupper.push([f.gruppe, [f]]); });
+  const udfyldt = liste.filter((f) => felter[f.navn] !== undefined && felter[f.navn] !== "" && felter[f.navn] !== false).length;
+  return (
+    <>
+      <div className="ph"><b>Udfyld felter</b><button className="btn ghost small" onClick={onClose}>✕</button></div>
+      <div className="pb">
+        {!partner ? <div className="empty">Vælg en partner i arbejdsområdet for at udfylde felterne. Skabelonen viser felterne tomme.</div> : <>
+          <p className="hint" style={{ marginTop: 0 }}>Værdierne gemmes for {partner.navn} og bruges ved Udskriv og Hent PDF. Tomme felter kan stadig udfyldes i PDF'en. {udfyldt} af {liste.length} felter er udfyldt.</p>
+          <div className="fgrp"><div className="fgh">Partner</div>
+            <label>Partnerens navn i dokumentet
+              <input type="text" disabled={!kanRette} value={typeof felter._navn === "string" ? felter._navn : ""} placeholder={partner.navn}
+                onChange={(e) => onChange("_navn", e.target.value)} /></label>
+            <div className="hint" style={{ marginTop: -6 }}>Tomt = navnet fra partnerkortet ({partner.navn}).</div>
+          </div>
+          {!liste.length && <div className="empty">Dette dokument har ingen felter.</div>}
+          {grupper.map(([g, fs]) => (
+            <div className="fgrp" key={g || "_"}>{g && <div className="fgh">{g}</div>}
+              {fs.map((f) => f.kind === "check"
+                ? <label key={f.navn} className="inline"><input type="checkbox" disabled={!kanRette} checked={felter[f.navn] === true} onChange={(e) => onChange(f.navn, e.target.checked)} />{f.label}</label>
+                : <label key={f.navn}>{f.label}{f.kind === "multi"
+                    ? <textarea disabled={!kanRette} rows={3} value={String(felter[f.navn] ?? "")} onChange={(e) => onChange(f.navn, e.target.value)} />
+                    : <input type="text" disabled={!kanRette} value={String(felter[f.navn] ?? "")} onChange={(e) => onChange(f.navn, e.target.value)} />}</label>)}
+            </div>))}
+        </>}
+      </div>
+    </>
   );
 }

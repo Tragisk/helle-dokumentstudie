@@ -4,7 +4,7 @@ import f500 from "@fontsource/dm-sans/files/dm-sans-latin-500-normal.woff2?url";
 import f600 from "@fontsource/dm-sans/files/dm-sans-latin-600-normal.woff2?url";
 import f700 from "@fontsource/dm-sans/files/dm-sans-latin-700-normal.woff2?url";
 import f800 from "@fontsource/dm-sans/files/dm-sans-latin-800-normal.woff2?url";
-import type { DokType, Partner } from "./types";
+import type { DokType, Felter, Partner } from "./types";
 
 export const TOK = "{{partner}}";
 const abs = (u: string) => new URL(u, document.baseURI).href;
@@ -27,13 +27,48 @@ body.editing main{outline:2px dashed rgba(194,79,203,.55);outline-offset:3px;cur
 body.editing main:focus{outline-color:#c24fcb}
 .overflow-flag{position:absolute;right:8mm;bottom:14mm;background:#b3261e;color:#fff;font:700 9pt 'DM Sans',sans-serif;padding:1.5mm 3mm;border-radius:2mm;z-index:5}
 @media print{.overflow-flag{display:none}.tok{background:none!important;box-shadow:none!important;padding:0!important}}
+.field.udfyldt{background:transparent!important;border-color:transparent!important;border-bottom:1px solid #d9c6e3!important;border-radius:0!important;display:flex;align-items:center;padding:0 1mm;font-weight:600;font-size:9.5pt;color:var(--ink,#311134);height:auto;min-height:7mm;white-space:pre-wrap}
+.field.inl.udfyldt{display:inline-flex;width:auto;min-width:0;min-height:0;vertical-align:baseline;padding:0 .5mm}
+.field.multi.udfyldt{align-items:flex-start;padding-top:1mm}
+.cb.udfyldt{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:8pt;line-height:1}
+body.editing .udfyldt{outline:1px dashed rgba(194,79,203,.6)}
 `;
 
-export interface BuildOpts { dok: DokType; partner: Partner | null; sider: string[]; versionTekst: string; visVersion: boolean; }
+/** Sætter udfyldte værdier ind i tomme felter (elementer med data-f). Elementet beholder data-f, så readPages kan tømme det igen. */
+export function anvendFelter(html: string, felter?: Felter): string {
+  if (!felter) return html;
+  return html.replace(/<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)><\/\1>/g, (m, tag: string, attrs: string, navn: string) => {
+    const v = felter[navn];
+    if (v === undefined || v === "" || v === false) return m;
+    const kind = /data-k="check"/.test(attrs) ? "check" : "text";
+    if (kind === "check" && v !== true) return m;
+    const a = /class="/.test(attrs) ? attrs.replace(/class="/, 'class="udfyldt ') : attrs + ' class="udfyldt"';
+    return `<${tag}${a}>${kind === "check" ? "✓" : esc(String(v))}</${tag}>`;
+  });
+}
+
+export interface FeltInfo { navn: string; label: string; kind: "text" | "multi" | "check"; gruppe: string; }
+/** Finder alle felter i siderne i den rækkefølge, de står, med en etiket og den overskrift, de hører under. */
+export function feltListe(sider: string[]): FeltInfo[] {
+  const d = new DOMParser().parseFromString(`<div>${sider.join("")}</div>`, "text/html");
+  const ud: FeltInfo[] = []; const set = new Set<string>(); let gruppe = "";
+  d.body.querySelectorAll<HTMLElement>("h1, h2, .bh, [data-f]").forEach((el) => {
+    if (!el.dataset.f) { gruppe = [...el.childNodes].map((n) => n.textContent || "").join(" ").replace(/\s+/g, " ").trim(); return; }
+    const navn = el.dataset.f; if (set.has(navn)) return; set.add(navn);
+    let label = el.dataset.l || "";
+    if (!label) { const prev = el.previousElementSibling; if (prev?.classList.contains("flabel")) label = (prev.firstChild?.textContent || prev.textContent || "").trim(); }
+    if (!label) label = navn.replace(/_/g, " ");
+    const k = el.dataset.k === "check" ? "check" : el.dataset.k === "multi" ? "multi" : "text";
+    ud.push({ navn, label, kind: k, gruppe });
+  });
+  return ud;
+}
+
+export interface BuildOpts { dok: DokType; partner: Partner | null; sider: string[]; versionTekst: string; visVersion: boolean; felter?: Felter; }
 
 /** Bygger et komplet HTML-dokument (alle sider) til visning, redigering og udskrift. */
-export function buildHtml({ dok, partner, sider, versionTekst, visVersion }: BuildOpts): string {
-  const navn = partner ? partner.navn : "Partnernavn";
+export function buildHtml({ dok, partner, sider, versionTekst, visVersion, felter }: BuildOpts): string {
+  const navn = partner ? (typeof felter?._navn === "string" && felter._navn.trim() ? felter._navn.trim() : partner.navn) : "Partnernavn";
   const tok = `<span class="tok" data-tok="partner" contenteditable="false">${esc(navn)}</span>`;
   const logo = partner ? (partner.logo ? `<img src="${partner.logo}" alt="">` : "") : '<span class="logoph">Partnerlogo</span>';
   const head = `<div class="partner"><div>Partnermateriale til<b>${tok}</b></div>${logo}</div>`;
@@ -42,7 +77,7 @@ export function buildHtml({ dok, partner, sider, versionTekst, visVersion }: Bui
   const body = sider.map((pg, i) => `
 <section class="page">
   <header class="top"><img class="lea" src="${LEA_LOGO}" alt="LEA">${head}</header>
-  <main>${String(pg).split(TOK).join(tok)}</main>
+  <main>${anvendFelter(String(pg).split(TOK).join(tok), felter)}</main>
   <footer class="foot">
     <span><b>LEA Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
     <span>${esc(dok.sidefod_titel)} · ${esc(dok.label)}${vtxt} · Side ${i + 1} af ${total}</span>
@@ -57,6 +92,7 @@ export function readPages(doc: Document): string[] {
   return [...doc.querySelectorAll("main")].map((m) => {
     const c = m.cloneNode(true) as HTMLElement;
     c.querySelectorAll<HTMLElement>("[data-tok]").forEach((s) => s.replaceWith(doc.createTextNode("{{" + s.dataset.tok + "}}")));
+    c.querySelectorAll<HTMLElement>("[data-f].udfyldt").forEach((f) => { f.innerHTML = ""; f.classList.remove("udfyldt"); });
     return c.innerHTML;
   });
 }

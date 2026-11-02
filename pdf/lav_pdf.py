@@ -57,8 +57,29 @@ def font_css() -> str:
         for w in (400, 500, 600, 700, 800))
 
 
-def build_html(dok, partner, sider, version) -> str:
-    navn = partner["navn"] if partner else "Partnernavn"
+FELT_RE = re.compile(r'<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)></\1>')
+
+
+def anvend_felter(html: str, felter: dict) -> str:
+    """Sætter udfyldte værdier ind i tomme felter. Udfyldte felter bliver tekst og får ingen PDF-widget."""
+    if not felter:
+        return html
+    def sub(m):
+        tag, attrs, navn = m.group(1), m.group(2), m.group(3)
+        v = felter.get(navn)
+        if v in (None, "", False):
+            return m.group(0)
+        check = 'data-k="check"' in attrs
+        if check and v is not True:
+            return m.group(0)
+        a = attrs.replace('class="', 'class="udfyldt ', 1) if 'class="' in attrs else attrs + ' class="udfyldt"'
+        return f"<{tag}{a}>{'✓' if check else esc(v)}</{tag}>"
+    return FELT_RE.sub(sub, html)
+
+
+def build_html(dok, partner, sider, version, felter=None) -> str:
+    felter = felter or {}
+    navn = (felter.get("_navn") or "").strip() or (partner["navn"] if partner else "Partnernavn")
     tok = f'<span class="tok">{esc(navn)}</span>'
     logo = (f'<img src="{partner["logo"]}" alt="">' if partner and partner.get("logo") else "") if partner else ""
     head = f'<div class="partner"><div>Partnermateriale til<b>{tok}</b></div>{logo}</div>'
@@ -66,10 +87,14 @@ def build_html(dok, partner, sider, version) -> str:
     total = len(sider)
     pages = "".join(f"""
 <section class="page"><header class="top"><img class="lea" src="{lea}" alt="LEA">{head}</header>
-<main>{str(pg).replace(TOK, tok)}</main>
+<main>{anvend_felter(str(pg).replace(TOK, tok), felter)}</main>
 <footer class="foot"><span><b>LEA Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
 <span>{esc(dok['sidefod_titel'])} · {esc(dok['label'])} · v{esc(version)} · Side {i + 1} af {total}</span></footer></section>""" for i, pg in enumerate(sider))
-    extra = ".partner img{height:8.5mm;max-width:34mm;object-fit:contain}"
+    extra = (".partner img{height:8.5mm;max-width:34mm;object-fit:contain}"
+             ".field.udfyldt{background:transparent!important;border-color:transparent!important;border-bottom:1px solid #d9c6e3!important;border-radius:0!important;display:flex;align-items:center;padding:0 1mm;font-weight:600;font-size:9.5pt;height:auto;min-height:7mm;white-space:pre-wrap}"
+             ".field.inl.udfyldt{display:inline-flex;width:auto;min-width:0;min-height:0;vertical-align:baseline;padding:0 .5mm}"
+             ".field.multi.udfyldt{align-items:flex-start;padding-top:1mm}"
+             ".cb.udfyldt{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:8pt;line-height:1}")
     return f"<!doctype html><html lang='da'><head><meta charset='utf-8'><style>{font_css()}{base_css()}{dok['css']}{extra}</style></head><body>{pages}</body></html>"
 
 
@@ -82,7 +107,7 @@ async def render(html: str, out: Path) -> int:
         await pg.goto(tmp_html.as_uri()); await pg.evaluate("document.fonts.ready"); await pg.wait_for_timeout(400)
         fields = await pg.evaluate("""() => {
           const pages=[...document.querySelectorAll('.page')];
-          return [...document.querySelectorAll('[data-f]')].map(el=>{
+          return [...document.querySelectorAll('[data-f]:not(.udfyldt)')].map(el=>{
             const pg=el.closest('.page'); const pr=pg.getBoundingClientRect(); const r=el.getBoundingClientRect();
             return {name:el.dataset.f, kind:el.dataset.k||'text', page:pages.indexOf(pg), x:r.left-pr.left, y:r.top-pr.top, w:r.width, h:r.height};
           });}""")
@@ -121,8 +146,12 @@ def main():
         else:
             ver = one("ds_variant_versioner", partner_id=job["partner_id"], dok_id=job["dok_id"], status="publiceret", version=job["version"], slettet="false")
         partner = one("ds_partnere", id=job["partner_id"]) if job.get("partner_id") else None
+        felter = {}
+        if partner:
+            pd = api("GET", f"/rest/v1/ds_partner_dokumenter?partner_id=eq.{job['partner_id']}&dok_id=eq.{urllib.parse.quote(job['dok_id'])}&select=felter")
+            felter = (pd[0].get("felter") if pd else None) or {}
         out = Path("/tmp") / f"{JOB}.pdf"
-        n = asyncio.run(render(build_html(dok, partner, ver["sider"], job["version"]), out))
+        n = asyncio.run(render(build_html(dok, partner, ver["sider"], job["version"], felter), out))
         sti = f"{JOB}.pdf"
         api("POST", f"/storage/v1/object/ds-pdf/{sti}", raw=out.read_bytes(),
             headers={"Content-Type": "application/pdf", "x-upsert": "true"})

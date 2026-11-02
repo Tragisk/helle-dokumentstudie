@@ -14,7 +14,10 @@ export interface Partner {
 export interface PartnerDok {
   partner_id: string; dok_id: string; tilstand: "standard" | "variant"; skabelon_version: string | null;
   variant_version: string | null; status: Status; opdateret: string;
+  /** Udfyldte felter (data-f). Nøglen "_navn" overskriver partnernavnet i dokumentet. */
+  felter: Felter;
 }
+export type Felter = Record<string, string | boolean>;
 export interface VariantVersion {
   id: string; partner_id: string; dok_id: string; version: string | null; status: "kladde" | "publiceret"; baseret_paa: string;
   sider: string[]; note: string; forfatter_navn: string; oprettet: string; opdateret: string; publiceret: string | null; slettet: boolean;
