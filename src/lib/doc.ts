@@ -27,9 +27,8 @@ body.editing main{outline:2px dashed rgba(194,79,203,.55);outline-offset:3px;cur
 body.editing main:focus{outline-color:#c24fcb}
 .overflow-flag{position:absolute;right:8mm;bottom:14mm;background:#b3261e;color:#fff;font:700 9pt 'DM Sans',sans-serif;padding:1.5mm 3mm;border-radius:2mm;z-index:5}
 @media print{.overflow-flag{display:none}.tok{background:none!important;box-shadow:none!important;padding:0!important}}
-.field.udfyldt{background:transparent!important;border:0!important;border-radius:0!important;display:flex;align-items:center;padding:0 1mm;font-weight:600;font-size:9.5pt;color:var(--ink,#311134);height:auto;min-height:7mm;white-space:pre-wrap}
-.field.inl.udfyldt{display:inline-flex;width:auto;min-width:0;min-height:0;vertical-align:baseline;padding:0 .5mm}
-.field.multi.udfyldt{align-items:flex-start;padding-top:1mm}
+.field.udfyldt{background:transparent!important;border:0!important;border-radius:0!important;display:block!important;height:auto!important;min-height:0!important;width:auto!important;padding:0!important;margin:0!important;font:inherit!important;color:inherit!important;white-space:pre-wrap}
+.field.inl.udfyldt{display:inline!important;vertical-align:baseline!important}
 .cb.udfyldt{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:8pt;line-height:1}
 body.editing .udfyldt{outline:1px dashed rgba(194,79,203,.6)}
 `;
