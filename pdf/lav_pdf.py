@@ -1,4 +1,4 @@
-"""LEA Dokumentstudie – PDF-motor (kører i GitHub Actions).
+"""LEA Dokumentstudie – PDF-motor (kører i GitHub Actions). Laver også Word-udgaven (format=docx) via lav_docx.py.
 
 Henter ét PDF-job fra Supabase, bygger dokumentet i LEA-designet, gemmer det som vektor-PDF med Chromium
 og lægger udfyldelige felter på (felter er markeret med data-f i dokumentets HTML). PDF'en uploades til den
@@ -77,9 +77,19 @@ def anvend_felter(html: str, felter: dict) -> str:
     return FELT_RE.sub(sub, html)
 
 
+def partner_navn(partner, felter) -> str:
+    return (str((felter or {}).get("_navn") or "")).strip() or (partner["navn"] if partner else "Partnernavn")
+
+
+def docx_sider(partner, sider, felter) -> list[str]:
+    """Siderne med partnernavn og udfyldte felter sat ind (samme som i PDF'en)."""
+    tok = f'<span class="tok">{esc(partner_navn(partner, felter))}</span>'
+    return [anvend_felter(str(pg).replace(TOK, tok), felter or {}) for pg in sider]
+
+
 def build_html(dok, partner, sider, version, felter=None) -> str:
     felter = felter or {}
-    navn = (felter.get("_navn") or "").strip() or (partner["navn"] if partner else "Partnernavn")
+    navn = partner_navn(partner, felter)
     tok = f'<span class="tok">{esc(navn)}</span>'
     logo = (f'<img src="{partner["logo"]}" alt="">' if partner and partner.get("logo") else "") if partner else ""
     head = f'<div class="partner"><div>Partnermateriale til<b>{tok}</b></div>{logo}</div>'
@@ -149,13 +159,20 @@ def main():
         if partner:
             pd = api("GET", f"/rest/v1/ds_partner_dokumenter?partner_id=eq.{job['partner_id']}&dok_id=eq.{urllib.parse.quote(job['dok_id'])}&select=felter")
             felter = (pd[0].get("felter") if pd else None) or {}
-        out = Path("/tmp") / f"{JOB}.pdf"
-        n = asyncio.run(render(build_html(dok, partner, ver["sider"], job["version"], felter), out))
-        sti = f"{JOB}.pdf"
+        if job.get("format") == "docx":
+            from lav_docx import lav_docx
+            out = Path("/tmp") / f"{JOB}.docx"
+            lav_docx(dok, partner, docx_sider(partner, ver["sider"], felter), job["version"], ROOT / "public/lea-logo.png", out,
+                     partner_navn(partner, felter) if partner else "")
+            sti, mime = f"{JOB}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        else:
+            out = Path("/tmp") / f"{JOB}.pdf"
+            asyncio.run(render(build_html(dok, partner, ver["sider"], job["version"], felter), out))
+            sti, mime = f"{JOB}.pdf", "application/pdf"
         api("POST", f"/storage/v1/object/ds-pdf/{sti}", raw=out.read_bytes(),
-            headers={"Content-Type": "application/pdf", "x-upsert": "true"})
+            headers={"Content-Type": mime, "x-upsert": "true"})
         set_job(status="faerdig", sti=sti, fejl=None, faerdig=datetime.now(timezone.utc).isoformat())
-        print(f"PDF færdig ({len(ver['sider'])} sider, {n} felter)")
+        print(f"Fil færdig ({'Word' if mime != 'application/pdf' else 'PDF'}, {len(ver['sider'])} sider)")
     except Exception as e:  # skriv kun fejltype i loggen, ikke indhold
         print("Fejl:", type(e).__name__)
         try: set_job(status="fejl", fejl=f"{type(e).__name__}: {str(e)[:200]}")
