@@ -413,7 +413,11 @@ function FelterPanel({ sider, felter, partner, kanRette, onChange, onClose }: {
   const liste = useMemo(() => feltListe(sider), [sider]);
   const grupper: [string, typeof liste][] = [];
   liste.forEach((f) => { const g = grupper.find((x) => x[0] === f.gruppe); if (g) g[1].push(f); else grupper.push([f.gruppe, [f]]); });
-  const udfyldt = liste.filter((f) => (felter[f.navn] !== undefined && felter[f.navn] !== "" && felter[f.navn] !== false) || !!f.standard).length;
+  const harV = (n: string) => felter[n] !== undefined && felter[n] !== "" && felter[n] !== false;
+  /** Det, et tomt felt viser: værdien fra det felt, det arver fra (data-dfra), ellers standardværdien (data-d). */
+  const arvet = (f: (typeof liste)[number]) => (f.fra && typeof felter[f.fra] === "string" && felter[f.fra] !== "" ? String(felter[f.fra]) : f.standard);
+  const fraLabel = (f: (typeof liste)[number]) => liste.find((x) => x.navn === f.fra)?.label || f.fra;
+  const udfyldt = liste.filter((f) => harV(f.navn) || !!arvet(f)).length;
   return (
     <>
       <div className="ph"><b>Udfyld felter</b><button className="btn ghost small" onClick={onClose}>✕</button></div>
@@ -433,8 +437,9 @@ function FelterPanel({ sider, felter, partner, kanRette, onChange, onClose }: {
                 ? <label key={f.navn} className="inline"><input type="checkbox" disabled={!kanRette} checked={felter[f.navn] === true} onChange={(e) => onChange(f.navn, e.target.checked)} />{f.label}</label>
                 : <label key={f.navn}>{f.label}{f.kind === "multi"
                     ? <textarea disabled={!kanRette} rows={3} value={String(felter[f.navn] ?? "")} onChange={(e) => onChange(f.navn, e.target.value)} />
-                    : <input type="text" disabled={!kanRette} value={String(felter[f.navn] ?? "")} placeholder={f.standard} onChange={(e) => onChange(f.navn, e.target.value)} />}
-                    {f.standard && <span className="hint" style={{ display: "block", marginTop: 2 }}>Tomt = {f.standard}</span>}</label>)}
+                    : <input type="text" disabled={!kanRette} value={String(felter[f.navn] ?? "")} placeholder={arvet(f)} onChange={(e) => onChange(f.navn, e.target.value)} />}
+                    {(f.fra || f.standard) && <span className="hint" style={{ display: "block", marginTop: 2 }}>
+                      {f.fra ? `Tomt = samme som "${fraLabel(f)}"${arvet(f) ? ` (${arvet(f)})` : ""}` : `Tomt = ${f.standard}`}</span>}</label>)}
             </div>))}
         </>}
       </div>

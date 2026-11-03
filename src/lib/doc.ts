@@ -34,17 +34,25 @@ body.editing .udfyldt{outline:1px dashed rgba(194,79,203,.6)}
 `;
 
 const unesc = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
-/** Standardværdien for et tekstfelt (data-d), fx LEA's underskriver. Bruges, når feltet ikke er udfyldt. */
-const standardAf = (attrs: string) => { const d = /\bdata-d="([^"]*)"/.exec(attrs); return d ? unesc(d[1]) : ""; };
+const attr = (attrs: string, navn: string) => { const d = new RegExp(`\\b${navn}="([^"]*)"`).exec(attrs); return d ? unesc(d[1]) : ""; };
+const tom = (v: unknown) => v === undefined || v === null || v === "";
 
-/** Sætter udfyldte værdier ind i tomme felter (elementer med data-f). Tomme tekstfelter med en standardværdi (data-d) får den.
+/** Værdien for et tomt tekstfelt: først det felt, der står i data-dfra (fx Bilag 5's underskriver = aftalens),
+ *  derefter standardværdien i data-d (fx Per Reslow Olsen). */
+function standardVaerdi(attrs: string, felter: Felter): string {
+  const fra = attr(attrs, "data-dfra");
+  if (fra && !tom(felter[fra]) && typeof felter[fra] === "string") return String(felter[fra]);
+  return attr(attrs, "data-d");
+}
+
+/** Sætter udfyldte værdier ind i tomme felter (elementer med data-f). Tomme tekstfelter får standardværdien (data-dfra/data-d).
  *  Elementet beholder data-f, så readPages kan tømme det igen. */
 export function anvendFelter(html: string, felter?: Felter): string {
   const fl = felter || {};
   return html.replace(/<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)><\/\1>/g, (m, tag: string, attrs: string, navn: string) => {
     const kind = /data-k="check"/.test(attrs) ? "check" : "text";
     let v = fl[navn];
-    if ((v === undefined || v === "") && kind === "text") v = standardAf(attrs);
+    if (tom(v) && kind === "text") v = standardVaerdi(attrs, fl);
     if (v === undefined || v === "" || v === false) return m;
     if (kind === "check" && v !== true) return m;
     const a = /class="/.test(attrs) ? attrs.replace(/class="/, 'class="udfyldt ') : attrs + ' class="udfyldt"';
@@ -52,7 +60,8 @@ export function anvendFelter(html: string, felter?: Felter): string {
   });
 }
 
-export interface FeltInfo { navn: string; label: string; kind: "text" | "multi" | "check"; gruppe: string; standard: string; }
+/** standard = data-d. fra = data-dfra: feltet arver værdien fra dette felt, når det står tomt. */
+export interface FeltInfo { navn: string; label: string; kind: "text" | "multi" | "check"; gruppe: string; standard: string; fra: string; }
 /** Finder alle felter i siderne i den rækkefølge, de står, med en etiket og den overskrift, de hører under. */
 export function feltListe(sider: string[]): FeltInfo[] {
   const d = new DOMParser().parseFromString(`<div>${sider.join("")}</div>`, "text/html");
@@ -64,7 +73,7 @@ export function feltListe(sider: string[]): FeltInfo[] {
     if (!label) { const prev = el.previousElementSibling; if (prev?.classList.contains("flabel")) label = (prev.firstChild?.textContent || prev.textContent || "").trim(); }
     if (!label) label = navn.replace(/_/g, " ");
     const k = el.dataset.k === "check" ? "check" : el.dataset.k === "multi" ? "multi" : "text";
-    ud.push({ navn, label, kind: k, gruppe, standard: k === "check" ? "" : el.dataset.d || "" });
+    ud.push({ navn, label, kind: k, gruppe, standard: k === "check" ? "" : el.dataset.d || "", fra: k === "check" ? "" : el.dataset.dfra || "" });
   });
   return ud;
 }

@@ -62,15 +62,20 @@ FELT_RE = re.compile(r'<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)></\1>')
 
 def anvend_felter(html: str, felter: dict) -> str:
     """Sætter udfyldte værdier ind i tomme felter. Udfyldte felter bliver tekst og får ingen PDF-widget.
-    Tomme tekstfelter med en standardværdi (data-d), fx LEA's underskriver, får standardværdien."""
+    Tomme tekstfelter får først værdien fra feltet i data-dfra (fx Bilag 5's underskriver = aftalens)
+    og derefter standardværdien i data-d (fx LEA's underskriver). Samme regel som i studiet (src/lib/doc.ts)."""
     felter = felter or {}
+    def attr(attrs, navn):
+        d = re.search(rf'\b{navn}="([^"]*)"', attrs)
+        return html_lib.unescape(d.group(1)) if d else ""
     def sub(m):
         tag, attrs, navn = m.group(1), m.group(2), m.group(3)
         check = 'data-k="check"' in attrs
         v = felter.get(navn)
         if v in (None, "") and not check:
-            d = re.search(r'\bdata-d="([^"]*)"', attrs)
-            v = html_lib.unescape(d.group(1)) if d else None
+            fra = attr(attrs, "data-dfra")
+            fv = felter.get(fra) if fra else None
+            v = fv if isinstance(fv, str) and fv != "" else (attr(attrs, "data-d") or None)
         if v in (None, "", False):
             return m.group(0)
         if check and v is not True:
