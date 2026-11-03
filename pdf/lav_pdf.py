@@ -4,7 +4,7 @@ Henter ét PDF-job fra Supabase, bygger dokumentet i LEA-designet, gemmer det so
 og lægger udfyldelige felter på (felter er markeret med data-f i dokumentets HTML). PDF'en uploades til den
 private lagerplads 'ds-pdf'. Scriptet skriver aldrig dokumentindhold i loggen, da repoet er offentligt.
 """
-import asyncio, json, os, re, sys, urllib.parse, urllib.request
+import asyncio, html as html_lib, json, os, re, sys, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -61,15 +61,18 @@ FELT_RE = re.compile(r'<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)></\1>')
 
 
 def anvend_felter(html: str, felter: dict) -> str:
-    """Sætter udfyldte værdier ind i tomme felter. Udfyldte felter bliver tekst og får ingen PDF-widget."""
-    if not felter:
-        return html
+    """Sætter udfyldte værdier ind i tomme felter. Udfyldte felter bliver tekst og får ingen PDF-widget.
+    Tomme tekstfelter med en standardværdi (data-d), fx LEA's underskriver, får standardværdien."""
+    felter = felter or {}
     def sub(m):
         tag, attrs, navn = m.group(1), m.group(2), m.group(3)
+        check = 'data-k="check"' in attrs
         v = felter.get(navn)
+        if v in (None, "") and not check:
+            d = re.search(r'\bdata-d="([^"]*)"', attrs)
+            v = html_lib.unescape(d.group(1)) if d else None
         if v in (None, "", False):
             return m.group(0)
-        check = 'data-k="check"' in attrs
         if check and v is not True:
             return m.group(0)
         a = attrs.replace('class="', 'class="udfyldt ', 1) if 'class="' in attrs else attrs + ' class="udfyldt"'

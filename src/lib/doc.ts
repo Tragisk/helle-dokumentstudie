@@ -33,20 +33,26 @@ body.editing main:focus{outline-color:#c24fcb}
 body.editing .udfyldt{outline:1px dashed rgba(194,79,203,.6)}
 `;
 
-/** Sætter udfyldte værdier ind i tomme felter (elementer med data-f). Elementet beholder data-f, så readPages kan tømme det igen. */
+const unesc = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+/** Standardværdien for et tekstfelt (data-d), fx LEA's underskriver. Bruges, når feltet ikke er udfyldt. */
+const standardAf = (attrs: string) => { const d = /\bdata-d="([^"]*)"/.exec(attrs); return d ? unesc(d[1]) : ""; };
+
+/** Sætter udfyldte værdier ind i tomme felter (elementer med data-f). Tomme tekstfelter med en standardværdi (data-d) får den.
+ *  Elementet beholder data-f, så readPages kan tømme det igen. */
 export function anvendFelter(html: string, felter?: Felter): string {
-  if (!felter) return html;
+  const fl = felter || {};
   return html.replace(/<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)><\/\1>/g, (m, tag: string, attrs: string, navn: string) => {
-    const v = felter[navn];
-    if (v === undefined || v === "" || v === false) return m;
     const kind = /data-k="check"/.test(attrs) ? "check" : "text";
+    let v = fl[navn];
+    if ((v === undefined || v === "") && kind === "text") v = standardAf(attrs);
+    if (v === undefined || v === "" || v === false) return m;
     if (kind === "check" && v !== true) return m;
     const a = /class="/.test(attrs) ? attrs.replace(/class="/, 'class="udfyldt ') : attrs + ' class="udfyldt"';
     return `<${tag}${a}>${kind === "check" ? "✓" : esc(String(v))}</${tag}>`;
   });
 }
 
-export interface FeltInfo { navn: string; label: string; kind: "text" | "multi" | "check"; gruppe: string; }
+export interface FeltInfo { navn: string; label: string; kind: "text" | "multi" | "check"; gruppe: string; standard: string; }
 /** Finder alle felter i siderne i den rækkefølge, de står, med en etiket og den overskrift, de hører under. */
 export function feltListe(sider: string[]): FeltInfo[] {
   const d = new DOMParser().parseFromString(`<div>${sider.join("")}</div>`, "text/html");
@@ -58,7 +64,7 @@ export function feltListe(sider: string[]): FeltInfo[] {
     if (!label) { const prev = el.previousElementSibling; if (prev?.classList.contains("flabel")) label = (prev.firstChild?.textContent || prev.textContent || "").trim(); }
     if (!label) label = navn.replace(/_/g, " ");
     const k = el.dataset.k === "check" ? "check" : el.dataset.k === "multi" ? "multi" : "text";
-    ud.push({ navn, label, kind: k, gruppe });
+    ud.push({ navn, label, kind: k, gruppe, standard: k === "check" ? "" : el.dataset.d || "" });
   });
   return ud;
 }

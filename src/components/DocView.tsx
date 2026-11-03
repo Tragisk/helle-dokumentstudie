@@ -413,7 +413,7 @@ function FelterPanel({ sider, felter, partner, kanRette, onChange, onClose }: {
   const liste = useMemo(() => feltListe(sider), [sider]);
   const grupper: [string, typeof liste][] = [];
   liste.forEach((f) => { const g = grupper.find((x) => x[0] === f.gruppe); if (g) g[1].push(f); else grupper.push([f.gruppe, [f]]); });
-  const udfyldt = liste.filter((f) => felter[f.navn] !== undefined && felter[f.navn] !== "" && felter[f.navn] !== false).length;
+  const udfyldt = liste.filter((f) => (felter[f.navn] !== undefined && felter[f.navn] !== "" && felter[f.navn] !== false) || !!f.standard).length;
   return (
     <>
       <div className="ph"><b>Udfyld felter</b><button className="btn ghost small" onClick={onClose}>✕</button></div>
@@ -433,7 +433,8 @@ function FelterPanel({ sider, felter, partner, kanRette, onChange, onClose }: {
                 ? <label key={f.navn} className="inline"><input type="checkbox" disabled={!kanRette} checked={felter[f.navn] === true} onChange={(e) => onChange(f.navn, e.target.checked)} />{f.label}</label>
                 : <label key={f.navn}>{f.label}{f.kind === "multi"
                     ? <textarea disabled={!kanRette} rows={3} value={String(felter[f.navn] ?? "")} onChange={(e) => onChange(f.navn, e.target.value)} />
-                    : <input type="text" disabled={!kanRette} value={String(felter[f.navn] ?? "")} onChange={(e) => onChange(f.navn, e.target.value)} />}</label>)}
+                    : <input type="text" disabled={!kanRette} value={String(felter[f.navn] ?? "")} placeholder={f.standard} onChange={(e) => onChange(f.navn, e.target.value)} />}
+                    {f.standard && <span className="hint" style={{ display: "block", marginTop: 2 }}>Tomt = {f.standard}</span>}</label>)}
             </div>))}
         </>}
       </div>
