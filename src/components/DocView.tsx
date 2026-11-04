@@ -191,7 +191,7 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
     if (!kilde?.version || pdfStatus) return;
     const ver = kilde.version, type = kilde.type;
     const navn = format === "pdf" ? "PDF" : "Word";
-    const filnavn = `LEA ${dok.navn.replace(" · ", " - ")} - ${partner ? partner.navn : "Skabelon"} v${ver}.${format}`.replace(/[\\/:*?"<>|]/g, "");
+    const filnavn = `Helle ${dok.navn.replace(" · ", " - ")} - ${partner ? partner.navn : "Skabelon"} v${ver}.${format}`.replace(/[\\/:*?"<>|]/g, "");
     setPdfStatus(`Starter ${navn}-motoren …`);
     try {
       const { data: s } = await sb.auth.getSession();
@@ -282,7 +282,7 @@ export default function DocView({ ws, dokId }: { ws: string; dokId: string }) {
             ? <button className="btn" disabled>{pdfStatus}</button>
             : <>
               <button className="btn" onClick={() => hentFil("pdf")}
-                title="Vektor-PDF i LEA-designet med de felter, du har udfyldt. Tomme felter kan udfyldes i PDF'en.">Hent PDF</button>
+                title="Vektor-PDF i Helle-designet med de felter, du har udfyldt. Tomme felter kan udfyldes i PDF'en.">Hent PDF</button>
               <button className="btn" onClick={() => hentFil("docx")}
                 title="Redigerbar Word-fil (.docx) med de felter, du har udfyldt. Layoutet er tilnærmet PDF'en.">Hent Word</button>
             </>)}

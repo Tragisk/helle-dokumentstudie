@@ -1,4 +1,4 @@
-// LEA Dokumentstudie: starter PDF-jobbet på GitHub (workflow_dispatch).
+// Helle Dokumentstudie: starter PDF-jobbet på GitHub (workflow_dispatch).
 // Kaldes fra appen med brugerens login. GitHub-nøglen ligger som Supabase-hemmelighed GITHUB_PDF_TOKEN.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 

@@ -10,7 +10,7 @@ export function TplOverview({ go, onNyPartner }: { go: (n: Nav) => void; onNyPar
   const { data, kanRette } = useStore();
   return (
     <div className="ovwrap">
-      <div className="ovhead"><h2>LEA skabeloner</h2><span className="grow" />{kanRette && <button className="btn primary" onClick={onNyPartner}>+ Ny partner</button>}</div>
+      <div className="ovhead"><h2>Helle skabeloner</h2><span className="grow" />{kanRette && <button className="btn primary" onClick={onNyPartner}>+ Ny partner</button>}</div>
       <div className="ovgrid">
         <section className="card wide"><h3>Partnere</h3>
           {data.partnere.length ? <table className="dt"><thead><tr><th>Partner</th><th>Godkendt</th><th>Varianter</th><th>Bag standarden</th><th>Onboarding</th><th /></tr></thead><tbody>

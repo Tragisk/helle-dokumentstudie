@@ -1,4 +1,4 @@
-"""LEA Dokumentstudie – Word-udgave (.docx) af et dokument.
+"""Helle Dokumentstudie – Word-udgave (.docx) af et dokument.
 
 Bygger et redigerbart Word-dokument ud fra samme HTML som PDF'en (efter at udfyldte felter er sat ind).
 Layoutet er tilnærmet: overskrifter, afsnit, punkter, tabeller og bokse genskabes i Word-format, så
@@ -408,11 +408,11 @@ def lav_docx(dok: dict, partner, sider: list[str], version: str, logo: Path | No
     st.paragraph_format.line_spacing = 1.2
     st.paragraph_format.space_after = Pt(3)
 
-    # sidehoved med LEA-logo (og partnernavn, hvis dokumentet viser det)
+    # sidehoved med Helle-logo (og partnernavn, hvis dokumentet viser det)
     hp = sec.header.paragraphs[0]; hp.style = doc.styles["Normal"]
     hp.paragraph_format.tab_stops.add_tab_stop(Mm(CONTENT_W), WD_TAB_ALIGNMENT.RIGHT)
     if logo and logo.exists():
-        hp.add_run().add_picture(str(logo), height=Mm(10.5))
+        hp.add_run().add_picture(str(logo), height=Mm(8))
     css = dok.get("css") or ""
     if partnernavn_html and ".top .partner{display:none}" not in css:
         foran = "Aftale med" if 'content:"Aftale med"' in css else "Partnermateriale til"
@@ -428,7 +428,7 @@ def lav_docx(dok: dict, partner, sider: list[str], version: str, logo: Path | No
     _par_top.append(e); fp._p.get_or_add_pPr().append(_par_top)
     def fr(t, bold=False):
         r = fp.add_run(t); r.font.size = Pt(6.8); r.font.color.rgb = INK if bold else MUTED; r.font.bold = bold
-    fr("LEA Forsikringsformidling A/S", True)
+    fr("Helle Forsikringsformidling A/S", True)
     fr(" · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105\t")
     fr(f"{dok.get('sidefod_titel', '')} · {dok.get('label', '')} · v{version} · Side ")
     _field(fp, "PAGE"); fr(" af "); _field(fp, "NUMPAGES")

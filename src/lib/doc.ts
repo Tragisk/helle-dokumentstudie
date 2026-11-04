@@ -8,7 +8,7 @@ import type { DokType, Felter, Partner } from "./types";
 
 export const TOK = "{{partner}}";
 const abs = (u: string) => new URL(u, document.baseURI).href;
-export const LEA_LOGO = abs(import.meta.env.BASE_URL + "lea-logo.png");
+export const LOGO = abs(import.meta.env.BASE_URL + "helle-logo.svg");
 
 export const FONT_CSS = ([[400, f400], [500, f500], [600, f600], [700, f700], [800, f800]] as [number, string][])
   .map(([w, u]) => `@font-face{font-family:'DM Sans';font-style:normal;font-weight:${w};font-display:swap;src:url(${abs(u)}) format('woff2')}`)
@@ -90,14 +90,14 @@ export function buildHtml({ dok, partner, sider, versionTekst, visVersion, felte
   const total = sider.length;
   const body = sider.map((pg, i) => `
 <section class="page">
-  <header class="top"><img class="lea" src="${LEA_LOGO}" alt="LEA">${head}</header>
+  <header class="top"><img class="lea" src="${LOGO}" alt="Helle">${head}</header>
   <main>${anvendFelter(String(pg).split(TOK).join(tok), felter)}</main>
   <footer class="foot">
-    <span><b>LEA Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
+    <span><b>Helle Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
     <span>${esc(dok.sidefod_titel)} · ${esc(dok.label)}${vtxt} · Side ${i + 1} af ${total}</span>
   </footer>
 </section>`).join("");
-  const titel = `LEA ${dok.navn.replace(" · ", " - ")} - ${partner ? partner.navn : "Skabelon"}${versionTekst ? " " + versionTekst : ""}`;
+  const titel = `Helle ${dok.navn.replace(" · ", " - ")} - ${partner ? partner.navn : "Skabelon"}${versionTekst ? " " + versionTekst : ""}`;
   return `<!doctype html><html lang="da"><head><meta charset="utf-8"><title>${esc(titel)}</title><style>${FONT_CSS}${BASE_CSS}${dok.css}${EXTRA_CSS}</style></head><body class="${partner ? "" : "tpl"}">${body}</body></html>`;
 }
 

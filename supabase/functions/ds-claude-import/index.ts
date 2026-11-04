@@ -1,4 +1,4 @@
-// LEA Dokumentstudie: import af dokumenter fra Claude.
+// Helle Dokumentstudie: import af dokumenter fra Claude.
 // Kræver en tidsbegrænset importnøgle (kun SHA-256-hash ligger i databasen).
 // Kan oprette dokumenttyper, lægge skabelon-KLADDER ind og oprette partnere.
 // Kan IKKE publicere skabeloner, undtagen første version af en helt ny dokumenttype.

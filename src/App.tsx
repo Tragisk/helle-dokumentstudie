@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { sb } from "./lib/supabase";
-import { LEA_LOGO, pagesToLines, subst, esc } from "./lib/doc";
+import { LOGO, pagesToLines, subst, esc } from "./lib/doc";
 import { StoreProvider, useStore, tplKladde, varKladde, pDok, brugBeskrivelse, aktivKilde, tplNyeste } from "./lib/store";
 import { ROLLE_TEKST, STATUS_TEKST } from "./lib/types";
 import Login from "./components/Login";
@@ -42,7 +42,7 @@ function Studio({ email }: { email: string }) {
 
   if (loading) return <div className="loading">Henter dokumenter …</div>;
   if (!mig) return (
-    <div className="login"><div className="logincard"><img src={LEA_LOGO} className="loginlogo" alt="LEA" /><h1>Ingen adgang</h1>
+    <div className="login"><div className="logincard"><img src={LOGO} className="loginlogo" alt="Helle" /><h1>Ingen adgang</h1>
       <p className="hint">{email} er ikke aktiv bruger af Dokumentstudie. Bed en admin om adgang.</p>{fejl && <div className="msg bad">{fejl}</div>}
       <button className="btn" onClick={() => sb.auth.signOut()}>Log ud</button></div></div>);
 
@@ -56,12 +56,12 @@ function Studio({ email }: { email: string }) {
   return (
     <div className={"app" + (view !== "doc" ? " ov" : "")}>
       <aside className="side">
-        <div className="brand"><img src={LEA_LOGO} alt="LEA" /><div><b>Dokumentstudie</b><span>{mig.navn || mig.email} · {ROLLE_TEKST[mig.rolle]}</span></div></div>
+        <div className="brand"><img src={LOGO} alt="Helle" /><div><b>Dokumentstudie</b><span>{mig.navn || mig.email} · {ROLLE_TEKST[mig.rolle]}</span></div></div>
         <div className="ws">
           <label htmlFor="wsSelect">Arbejdsområde</label>
           <div className="row">
             <select id="wsSelect" value={ws} onChange={(e) => go({ ws: e.target.value, view: "overview" })}>
-              <option value="tpl">LEA skabeloner</option>
+              <option value="tpl">Helle skabeloner</option>
               <optgroup label="Partnere">{data.partnere.map((p) => <option key={p.id} value={p.id}>{p.navn}</option>)}</optgroup>
             </select>
             {kanRette && <button className="btn small" onClick={() => setNyPartner(true)} title="Opret ny partner">+ Partner</button>}

@@ -1,6 +1,6 @@
-"""LEA Dokumentstudie – PDF-motor (kører i GitHub Actions). Laver også Word-udgaven (format=docx) via lav_docx.py.
+"""Helle Dokumentstudie – PDF-motor (kører i GitHub Actions). Laver også Word-udgaven (format=docx) via lav_docx.py.
 
-Henter ét PDF-job fra Supabase, bygger dokumentet i LEA-designet, gemmer det som vektor-PDF med Chromium
+Henter ét PDF-job fra Supabase, bygger dokumentet i Helle-designet, gemmer det som vektor-PDF med Chromium
 og lægger udfyldelige felter på (felter er markeret med data-f i dokumentets HTML). PDF'en uploades til den
 private lagerplads 'ds-pdf'. Scriptet skriver aldrig dokumentindhold i loggen, da repoet er offentligt.
 """
@@ -63,7 +63,7 @@ FELT_RE = re.compile(r'<(div|span)\b([^>]*?\bdata-f="([^"]+)"[^>]*)></\1>')
 def anvend_felter(html: str, felter: dict) -> str:
     """Sætter udfyldte værdier ind i tomme felter. Udfyldte felter bliver tekst og får ingen PDF-widget.
     Tomme tekstfelter får først værdien fra feltet i data-dfra (fx Bilag 5's underskriver = aftalens)
-    og derefter standardværdien i data-d (fx LEA's underskriver). Samme regel som i studiet (src/lib/doc.ts)."""
+    og derefter standardværdien i data-d (fx Helles underskriver). Samme regel som i studiet (src/lib/doc.ts)."""
     felter = felter or {}
     def attr(attrs, navn):
         d = re.search(rf'\b{navn}="([^"]*)"', attrs)
@@ -101,12 +101,12 @@ def build_html(dok, partner, sider, version, felter=None) -> str:
     tok = f'<span class="tok">{esc(navn)}</span>'
     logo = (f'<img src="{partner["logo"]}" alt="">' if partner and partner.get("logo") else "") if partner else ""
     head = f'<div class="partner"><div>Partnermateriale til<b>{tok}</b></div>{logo}</div>'
-    lea = (ROOT / "public/lea-logo.png").as_uri()
+    lea = (ROOT / "public/helle-logo.svg").as_uri()
     total = len(sider)
     pages = "".join(f"""
-<section class="page"><header class="top"><img class="lea" src="{lea}" alt="LEA">{head}</header>
+<section class="page"><header class="top"><img class="lea" src="{lea}" alt="Helle">{head}</header>
 <main>{anvend_felter(str(pg).replace(TOK, tok), felter)}</main>
-<footer class="foot"><span><b>LEA Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
+<footer class="foot"><span><b>Helle Forsikringsformidling A/S</b> · Strandgade 12, 1401 København K · CVR 45418669 · FT-nr. 48105</span>
 <span>{esc(dok['sidefod_titel'])} · {esc(dok['label'])} · v{esc(version)} · Side {i + 1} af {total}</span></footer></section>""" for i, pg in enumerate(sider))
     extra = (".partner img{height:8.5mm;max-width:34mm;object-fit:contain}"
              ".field.udfyldt{background:transparent!important;border:0!important;border-radius:0!important;display:block!important;height:auto!important;min-height:0!important;width:auto!important;padding:0!important;margin:0!important;font:inherit!important;color:inherit!important;white-space:pre-wrap}"
@@ -170,7 +170,7 @@ def main():
         if job.get("format") == "docx":
             from lav_docx import lav_docx
             out = Path("/tmp") / f"{JOB}.docx"
-            lav_docx(dok, partner, docx_sider(partner, ver["sider"], felter), job["version"], ROOT / "public/lea-logo.png", out,
+            lav_docx(dok, partner, docx_sider(partner, ver["sider"], felter), job["version"], ROOT / "public/helle-logo.png", out,
                      partner_navn(partner, felter) if partner else "")
             sti, mime = f"{JOB}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else:

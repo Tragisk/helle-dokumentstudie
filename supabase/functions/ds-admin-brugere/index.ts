@@ -1,4 +1,4 @@
-// LEA Dokumentstudie: brugeradministration, der kræver servicerolle.
+// Helle Dokumentstudie: brugeradministration, der kræver servicerolle.
 // Kaldes fra appen med brugerens login (JWT). Funktionen tjekker selv, at kalderen er aktiv admin.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 

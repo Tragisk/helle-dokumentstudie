@@ -35,7 +35,7 @@ export function Brugere() {
         </tbody></table>
         <div className="hint" style={{ marginTop: 12 }}>
           <b>Admin</b> kan alt, inklusive at publicere skabeloner og styre brugere. <b>Rediger</b> kan lave kladder, varianter og partnere. <b>Læs og download</b> kan se og udskrive.
-          Kun @leaforsikring.dk-adresser på listen kan logge ind. Login-links på mail virker kun for adresser, der er med i Supabase-teamet; andre logger ind med den adgangskode, du sætter her.
+          Kun @helleforsikring.dk- og @leaforsikring.dk-adresser på listen kan logge ind. Login-links på mail virker kun for adresser, der er med i Supabase-teamet; andre logger ind med den adgangskode, du sætter her.
         </div>
       </section>
       {ny && <NyBruger onClose={() => setNy(false)} onDone={async () => { setNy(false); await reload(); }} />}
@@ -53,12 +53,12 @@ function NyBruger({ onClose, onDone }: { onClose: () => void; onDone: () => void
   const [email, setEmail] = useState(""), [navn, setNavn] = useState(""), [rolle, setRolle] = useState<Rolle>("rediger");
   return (
     <Modal title="Tilføj bruger" onClose={onClose}>
-      <label>E-mail<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="navn@leaforsikring.dk" autoFocus /></label>
+      <label>E-mail<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="navn@helleforsikring.dk" autoFocus /></label>
       <label>Navn<input value={navn} onChange={(e) => setNavn(e.target.value)} /></label>
       <label>Rolle<select value={rolle} onChange={(e) => setRolle(e.target.value as Rolle)}>{(["admin", "rediger", "laes"] as Rolle[]).map((r) => <option key={r} value={r}>{ROLLE_TEKST[r]}</option>)}</select></label>
       <div className="row"><button className="btn" onClick={onClose}>Annullér</button><button className="btn primary" onClick={async () => {
         const e = email.trim().toLowerCase();
-        if (!/^[^@\s]+@leaforsikring\.dk$/.test(e)) return toast("Kun @leaforsikring.dk-adresser");
+        if (!/^[^@\s]+@(helleforsikring|leaforsikring)\.dk$/.test(e)) return toast("Kun @helleforsikring.dk- og @leaforsikring.dk-adresser");
         const { error } = await sb.from("ds_brugere").insert({ email: e, navn: navn.trim(), rolle });
         if (error) return toast(fejltekst(error));
         await log("Bruger tilføjet", { detaljer: { email: e, rolle } }); toast("Brugeren er tilføjet. Sæt en adgangskode, så de kan logge ind."); onDone();

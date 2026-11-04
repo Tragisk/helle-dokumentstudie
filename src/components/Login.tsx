@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { sb, fejltekst } from "../lib/supabase";
-import { LEA_LOGO } from "../lib/doc";
+import { LOGO } from "../lib/doc";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -9,11 +9,11 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [besked, setBesked] = useState<{ ok: boolean; t: string } | null>(null);
 
-  const ok = /^[^@\s]+@leaforsikring\.dk$/i.test(email.trim());
+  const ok = /^[^@\s]+@(helleforsikring|leaforsikring)\.dk$/i.test(email.trim());
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    if (!ok) { setBesked({ ok: false, t: "Brug din @leaforsikring.dk-adresse." }); return; }
+    if (!ok) { setBesked({ ok: false, t: "Brug din @helleforsikring.dk-adresse." }); return; }
     setBusy(true); setBesked(null);
     try {
       if (mode === "link") {
@@ -42,14 +42,14 @@ export default function Login() {
   return (
     <div className="login">
       <form className="logincard" onSubmit={send}>
-        <img src={LEA_LOGO} alt="LEA" className="loginlogo" />
+        <img src={LOGO} alt="Helle" className="loginlogo" />
         <h1>Dokumentstudie</h1>
-        <p className="hint">Partnermateriale med skabeloner og varianter. Kun for LEA-medarbejdere.</p>
+        <p className="hint">Partnermateriale med skabeloner og varianter. Kun for Helle-medarbejdere.</p>
         <div className="seg">
           <button type="button" className={mode === "link" ? "on" : ""} onClick={() => setMode("link")}>Login-link på mail</button>
           <button type="button" className={mode === "kode" ? "on" : ""} onClick={() => setMode("kode")}>Adgangskode</button>
         </div>
-        <label>E-mail<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="navn@leaforsikring.dk" required /></label>
+        <label>E-mail<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="navn@helleforsikring.dk" required /></label>
         {mode === "kode" && <label>Adgangskode<input type="password" autoComplete="current-password" value={kode} onChange={(e) => setKode(e.target.value)} required /></label>}
         <button className="btn primary big" disabled={busy}>{busy ? "Vent …" : mode === "link" ? "Send login-link" : "Log ind"}</button>
         {besked && <div className={"msg " + (besked.ok ? "ok" : "bad")}>{besked.t}</div>}
